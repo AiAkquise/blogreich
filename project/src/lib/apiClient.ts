@@ -3,8 +3,14 @@ import { supabase } from './supabase';
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8123';
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error('[apiClient] Session error:', error.message);
+  }
   const token = data.session?.access_token;
+  if (!token) {
+    console.warn('[apiClient] No auth token available — request will likely fail with 401');
+  }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -16,8 +22,8 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Request failed with status ${response.status}`);
+    const error = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(error.detail || error.message || `Request failed with status ${response.status}`);
   }
   return response.json();
 }
