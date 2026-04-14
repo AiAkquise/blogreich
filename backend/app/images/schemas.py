@@ -1,26 +1,23 @@
-"""Pydantic schemas for image generation."""
+"""Pydantic schemas for section-based image generation."""
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel
 
 
 class ImageGenerateRequest(BaseModel):
-    """Request to generate blog images via FLUX.2."""
+    """Request to generate blog images via FLUX.2 (one per section)."""
 
     blog_id: str
-    prompts: list[str] | None = None
-    auto_generate: bool = True
-    count: int = Field(default=3, ge=1, le=5)
     model: Literal["flux-2-pro-preview", "flux-2-klein-4b"] = "flux-2-pro-preview"
 
-    @model_validator(mode="after")
-    def validate_prompts(self) -> "ImageGenerateRequest":
-        """Require prompts when auto_generate is False."""
-        if not self.auto_generate and not self.prompts:
-            msg = "prompts erforderlich wenn auto_generate=False"
-            raise ValueError(msg)
-        return self
+
+class ImageGenerateResponse(BaseModel):
+    """Response after starting image generation background task."""
+
+    status: str = "started"
+    message: str = "Bildgenerierung gestartet"
+    total_sections: int
 
 
 class ImageResult(BaseModel):
@@ -31,9 +28,24 @@ class ImageResult(BaseModel):
     original_bfl_url: str
     prompt: str
     position: str
+    section_index: int
+    section_title: str
 
 
-class ImageGenerateResponse(BaseModel):
-    """Response with all generated images."""
+class SectionStatus(BaseModel):
+    """Status of image generation for a single section."""
 
-    images: list[ImageResult]
+    section_index: int
+    section_title: str
+    status: Literal["pending", "generating", "completed", "failed"]
+    image_url: str | None = None
+    prompt: str | None = None
+
+
+class ImageJobStatusResponse(BaseModel):
+    """Full status of image generation job with per-section progress."""
+
+    status: Literal["pending", "running", "completed", "failed"]
+    total_sections: int
+    completed_sections: int
+    sections: list[SectionStatus]
