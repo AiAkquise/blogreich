@@ -1,0 +1,2393 @@
+{
+  "name": "BLOG Automatisierung",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        64
+      ],
+      "id": "7e2ff2fa-6f69-4138-858c-f774e116783a",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "model": "sonar-reasoning-pro",
+        "messages": {
+          "message": [
+            {
+              "content": "Du bist ein SEO-Strategie-Experte. Du antwortest AUSSCHLIESSLICH mit EINEM einzigen Thema in maximal 3-5 Wörtern. KEINE Erklärungen, KEINE Aufzählungen, KEINE Zusatztexte, KEINE Kategorien-Namen.\n",
+              "role": "system"
+            },
+            {
+              "content": "=Firmenname: {{ $('Search records').first().json.Firmenname }}\nBranche: {{ $('Search records').first().json.Branche }}\nWebsite: {{ $('Search records').first().json['Website URL'] }}\nFirmenbeschreibung: {{ $('Search records').first().json.Firmenbeschreibung.value }}\nZielgruppe: {{ $('Search records').first().json.Zielgruppe.value }}\nHauptangebote: {{ $('Search records').first().json.Hauptangebote.value }}\n\n{{ $json.exclusion_list }}\n\nFinde das EINE wichtigste Thema mit höchstem SEO-Potenzial für einen umfassenden Blog-Artikel im Oktober 2025.\n\nDas Thema sollte:\n- NEU und ANDERS als die bereits behandelten Themen sein\n- Hohe Suchintention bei der Zielgruppe haben\n- Kommerziellen Wert für das Unternehmen bieten\n- Aktuell und relevant sein\n\nVariiere zwischen verschiedenen Content-Typen:\n- Service/Wartung (z.B. \"Wartung X in [Standort]\")\n- Installation/Modernisierung (z.B. \"Installation Y für [Zielgruppe]\")\n- Vorschriften/Compliance (z.B. \"Vorschriften Z beachten\")\n- Innovation/Technologie (z.B. \"Neue Technologie A\")\n- Praxisbeispiele (z.B. \"Erfolgreiche Umsetzung B\")\n\nAntworte NUR mit dem Thema (3-5 Wörter), nichts anderes.\n\nBeispiele guter Themen:\n- Wartung Niederspannungsanlagen Dresden\n- E-Ladestation Installation Gewerbe\n- VDE Prüfung Pflichten Sachsen\n- Smart Building Elektrotechnik\n"
+            }
+          ]
+        },
+        "options": {
+          "searchRecency": "week"
+        },
+        "requestOptions": {}
+      },
+      "id": "7021f35c-ce03-4e58-9583-566ff2494d80",
+      "name": "Perplexity - Blog Topic Research Node",
+      "type": "n8n-nodes-base.perplexity",
+      "position": [
+        800,
+        64
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "perplexityApi": {
+          "id": "o8nnjdjjFojrZpDS",
+          "name": "Adysseus Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const perplexityOutput = $input.first().json.choices[0].message.content;\n\n// Entferne <think> Block\nlet cleanText = perplexityOutput.replace(/<think>[\\s\\S]*?<\\/think>/g, '').trim();\n\n// Falls mehrere Zeilen, nimm die letzte nicht-leere\nconst lines = cleanText.split('\\n').filter(line => line.trim().length > 0);\nconst finalTheme = lines[lines.length - 1].trim();\n\nreturn [{\n  json: {\n    trendsText: finalTheme\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        64
+      ],
+      "id": "c751ab24-5024-412e-9669-a86f265a1688",
+      "name": "Trends extrahieren"
+    },
+    {
+      "parameters": {
+        "model": "sonar-reasoning-pro",
+        "messages": {
+          "message": [
+            {
+              "content": "Du bist ein Keyword-Research-Experte für SEO. Gib NUR eine kommaseparierte Liste mit genau 30 thematisch eng verwandten Keywords zurück. Keine Nummern, keine Anführungszeichen, keine Erklärungen - nur Keywords durch Komma getrennt.\n",
+              "role": "system"
+            },
+            {
+              "content": "=Hauptthema: {{ $('Trends extrahieren').first().json.trendsText }}\n\nFirmendaten:\nFirmenname: {{ $('Search records').first().json.Firmenname }}\nBranche: {{ $('Search records').first().json.Branche }}\nStandort/Region: {{ $('Search records').first().json['Website URL'] }}\nZielgruppe: {{ $('Search records').first().json.Zielgruppe.value }}\nHauptangebote: {{ $('Search records').first().json.Hauptangebote.value }}\n\nFinde 30 Long-Tail-Keywords die ALLE eng zum Hauptthema passen:\n\nAnforderungen:\n- Alle Keywords müssen thematisch zum Hauptthema gehören\n- Mix aus verschiedenen Search Intents (informational, commercial, transactional)\n- Lokaler Bezug wo sinnvoll und aus Firmendaten ableitbar\n- Verschiedene Keyword-Variationen (Synonyme, verwandte Begriffe)\n- Mindestens 3-5 Wörter pro Keyword\n- Keywords für die spezifische Zielgruppe des Unternehmens\n\nFormat: keyword eins, keyword zwei, keyword drei, ...\n"
+            }
+          ]
+        },
+        "options": {
+          "searchRecency": "week"
+        },
+        "requestOptions": {}
+      },
+      "id": "2b6c877b-818b-43cf-a119-51959555f181",
+      "name": "Perplexity - Keyword Recherche",
+      "type": "n8n-nodes-base.perplexity",
+      "position": [
+        1424,
+        64
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "perplexityApi": {
+          "id": "o8nnjdjjFojrZpDS",
+          "name": "Adysseus Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let content = $input.item.json.choices[0].message.content;\n\n// Entferne <think>...</think> Tags\ncontent = content.replace(/<think>[\\s\\S]*?<\\/think>/g, '').trim();\n\n// Entferne mögliche Zeilenumbrüche und ersetze durch Kommas\ncontent = content.replace(/\\n/g, ', ');\n\n// Splitte bei Kommas\nconst keywords = content\n  .split(',')\n  .map(kw => kw.trim())\n  .filter(kw => kw.length > 10 && kw.length < 100) // Nur sinnvolle Längen\n  .slice(0, 30); // Max 30 Keywords\n\nconsole.log('Keywords gefunden:', keywords.length);\n\n// Jedes Keyword als separates Item zurückgeben (wichtig für nächste Nodes!)\nreturn keywords.map((keyword, index) => ({\n  json: { \n    keyword: keyword.toLowerCase(),\n    originalKeyword: keyword,\n    position: index + 1,\n    quelle: 'perplexity_trend_research'\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        64
+      ],
+      "id": "018907ab-8dba-45fd-b79e-113f4456adc1",
+      "name": "Keywords aufteilen"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Firmenname: {{ $('Search records').first().json.Firmenname }}\nBranche: {{ $('Search records').first().json.Branche }}\n\nFirmenbeschreibung:\n{{ $('Search records').first().json.Firmenbeschreibung.value }}\n\nZielgruppe:\n{{ $('Search records').first().json.Zielgruppe.value }}\n\nHauptangebote:\n{{ $('Search records').first().json.Hauptangebote.value }}\n\nKeyword: {{ $json.originalKeyword }}\n\nScore:\n",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Du bist ein SEO-Analyst. Bewerte Keywords nach Business-Relevanz auf einer Skala von 1-10.  KRITISCH WICHTIG: Antworte mit EXAKT EINER einzelnen Ziffer: 1, 2, 3, 4, 5, 6, 7, 8, 9, oder 10.  Keine Leerzeichen. Keine Erklärungen. Keine mehreren Ziffern hintereinander.  RICHTIG: 8 FALSCH: 8-9, 753, 63, \"8\"  Bewertung: • 9-10 = Perfekt passend • 7-8 = Sehr relevant • 5-6 = Mittelbar relevant • 3-4 = Wenig relevant • 1-2 = Nicht relevant"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1856,
+        64
+      ],
+      "id": "76b537c5-e334-405e-a180-97928cd8ab36",
+      "name": "Basic LLM Chain - Keyword Relevanz bewerten"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ba0db12e-e84a-4526-adfb-0b092aac1182",
+              "leftValue": "={{ parseInt($json.text) }}",
+              "rightValue": 7,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        2224,
+        64
+      ],
+      "id": "4b79ce4c-45f1-47a7-a9d5-05363a608881",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appZkbJyqYZh8Vgrz",
+          "mode": "list",
+          "cachedResultName": "SEO Blog Content System",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblcRKUYvsigEOyjz",
+          "mode": "list",
+          "cachedResultName": "Keywords",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz/tblcRKUYvsigEOyjz"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Keyword": "={{ $('Keywords aufteilen').item.json.keyword }}",
+            "Unternehmen": "={{ $('Search records').first().json.Firmenname }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Keyword",
+              "displayName": "Keyword",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Unternehmen",
+              "displayName": "Unternehmen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Erstellt am",
+              "displayName": "Erstellt am",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2464,
+        64
+      ],
+      "id": "6893c2f8-5936-4d3f-8336-028f73c61ff2",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "56WbrC6ptGkgXQP8",
+          "name": "Airtable Office Account Business"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## WORKFLOW 1: KEYWORD GENERIERUNG\n",
+        "height": 384,
+        "width": 3664,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1b9cd247-9b27-4233-b4a3-ce6341550806",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## WORKFLOW 2: BLOG-CONTENT GENERIERUNG\n\n\n\n\n",
+        "height": 480,
+        "width": 3360,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ],
+      "id": "5b4c1c6a-d364-4b40-ada2-950213b046bb",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        528
+      ],
+      "id": "2043bf21-383e-4458-86a5-ae7b6cb8cc0a",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Warte bis alle Keywords erstellt sind\n// Sammle alle Keywords in einem Array\n\nconst allKeywords = $input.all().map(item => ({\n  id: item.json.id,\n  keyword: item.json.fields.Keyword,\n  score: item.json.fields['Relevanz Score'],\n  status: item.json.fields.Status\n}));\n\nreturn [{\n  json: {\n    keywords: allKeywords,\n    anzahl: allKeywords.length,\n    keywordsList: allKeywords.map(k => k.keyword).join('\\n')\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2672,
+        64
+      ],
+      "id": "32a4099b-fda1-4552-ae1d-eed8a1330772",
+      "name": "Alle Keywords sammeln"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Hauptthema: {{ $('Trends extrahieren').first().json.trendsText }}\n\nAlle Top-Keywords (Score 7+):\n{{ $json.keywordsList }}\n\nFirmendaten:\nFirmenname: {{ $('Search records').first().json.Firmenname }}\nBranche: {{ $('Search records').first().json.Branche }}\nZielgruppe: {{ $('Search records').first().json.Zielgruppe.value }}\n\nErstelle EINEN EINZIGEN perfekt fokussierten Blog-Cluster:\n\nAnforderungen:\n- 1 Primary Keyword: Das BESTE Keyword mit höchstem Business-Wert für VOELTEC\n- 8-12 Secondary Keywords: Die besten Keywords die zum Primary Keyword passen\n- Cluster-Name: Sollte das Hauptthema \"{{ $('Trends extrahieren').first().json.trendsText }}\" widerspiegeln\n- Alle Keywords müssen thematisch zusammenpassen\n- Fokus auf Dresden-Bezug wo möglich\n\nZiel: EIN umfassender, autoritativer Blog-Artikel zu diesem einen Cluster.\n\nAntworte mit JSON für GENAU EINEN Cluster.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Du bist ein SEO-Content-Stratege. Erstelle EINEN EINZIGEN fokussierten Blog-Cluster aus allen gegebenen Keywords.\n\nWähle:\n1. Das BESTE Keyword als Primary Keyword (höchster kommerzieller Wert + lokaler Bezug)\n2. Die 8-12 BESTEN Secondary Keywords die thematisch perfekt zum Primary Keyword passen\n\nGib JSON zurück mit GENAU EINEM Cluster:\n{\n  \"cluster_name\": \"Beschreibender Name\",\n  \"primary_keyword\": \"Das allerbeste Keyword\",\n  \"secondary_keywords\": [\"keyword1\", \"keyword2\", ..., \"keyword10\"],\n  \"blog_potential\": \"high\",\n  \"target_word_count\": 3500\n}\n\nWICHTIG: Nur EIN Cluster, nicht mehrere!"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        2848,
+        64
+      ],
+      "id": "1313ed44-0f35-4e78-b15f-04950b87b3d9",
+      "name": "Basic LLM Chain - Keywords clustern"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: Basic LLM Chain Output mit JSON in Markdown\nconst llmOutput = $input.first().json.text;\n\n// Schritt 1: Bereinige Markdown-Formatierung\nlet cleanedOutput = llmOutput\n  .replace(/```json\\n?/g, '')\n  .replace(/```\\n?/g, '')\n  .trim();\n\n// Schritt 2: Extrahiere NUR das JSON (ignoriere Text danach!)\nconst jsonStart = cleanedOutput.indexOf('{');\nconst jsonEnd = cleanedOutput.lastIndexOf('}');\n\nif (jsonStart === -1 || jsonEnd === -1) {\n  throw new Error('Kein JSON gefunden im Output');\n}\n\nconst jsonString = cleanedOutput.substring(jsonStart, jsonEnd + 1);\n\n// Schritt 3: Parse JSON\nlet clusterData;\ntry {\n  clusterData = JSON.parse(jsonString);\n} catch (error) {\n  throw new Error(`JSON Parse Error: ${error.message}\\nExtracted JSON: ${jsonString.substring(0, 500)}...`);\n}\n\n// Schritt 4: Validierung - KEIN clusters Array mehr!\nif (!clusterData.cluster_name || !clusterData.primary_keyword) {\n  throw new Error('Cluster-Name oder Primary-Keyword fehlt im JSON');\n}\n\n// Schritt 5: Hole Unternehmensdaten\nconst companyRecordId = $('Search records').first()?.json?.id || null;\n\n// Schritt 6: Formatiere den EINEN Cluster\nconst clusterId = `CLUSTER-${Date.now()}`;\n\nconst keywordsText = Array.isArray(clusterData.secondary_keywords)\n  ? clusterData.secondary_keywords.join(', ')\n  : clusterData.secondary_keywords;\n\nreturn [{\n  json: {\n    cluster_id: clusterId,\n    cluster_name: clusterData.cluster_name,\n    primary_keyword: clusterData.primary_keyword,\n    secondary_keywords: keywordsText,\n    blog_potential: clusterData.blog_potential || 'high',\n    target_word_count: clusterData.target_word_count || 3500,\n    company_record_id: companyRecordId,\n    cluster_size: (clusterData.secondary_keywords?.length || 0) + 1,\n    created_at: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3152,
+        64
+      ],
+      "id": "5c18928f-44e6-48ea-be75-a60d8842f616",
+      "name": "Cluster aufteilen",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appZkbJyqYZh8Vgrz",
+          "mode": "list",
+          "cachedResultName": "SEO Blog Content System",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblhuHnysMeAEqWWO",
+          "mode": "list",
+          "cachedResultName": "Blog Themen Cluster",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz/tblhuHnysMeAEqWWO"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Cluster ID": "={{ $json.cluster_id }}",
+            "Titel": "={{ $json.cluster_name }}",
+            "Haupt-Keyword": "={{ $json.primary_keyword }}",
+            "Keywords": "={{ $json.secondary_keywords }}",
+            "Unternehmen": "={{ $('Search records').first().json.Firmenname }}",
+            "Status": "Offen"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Titel",
+              "displayName": "Titel",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Cluster ID",
+              "displayName": "Cluster ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Unternehmen",
+              "displayName": "Unternehmen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Haupt-Keyword",
+              "displayName": "Haupt-Keyword",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Keywords",
+              "displayName": "Keywords",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Erstellt am",
+              "displayName": "Erstellt am",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        3360,
+        64
+      ],
+      "id": "57244d66-ae0b-4975-b65d-9cf8ce1cf2c0",
+      "name": "Create a record1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "56WbrC6ptGkgXQP8",
+          "name": "Airtable Office Account Business"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZkbJyqYZh8Vgrz",
+          "mode": "list",
+          "cachedResultName": "SEO Blog Content System",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblhuHnysMeAEqWWO",
+          "mode": "list",
+          "cachedResultName": "Blog Themen Cluster",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz/tblhuHnysMeAEqWWO"
+        },
+        "filterByFormula": "{Status} = \"Offen\"",
+        "returnAll": false,
+        "limit": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        528
+      ],
+      "id": "b88ac166-d826-4369-9c7b-c4fdb36ae08c",
+      "name": "Search records2",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "56WbrC6ptGkgXQP8",
+          "name": "Airtable Office Account Business"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## WORKFLOW 4: BLOG-PUBLISHING\n\n\n\n\n",
+        "height": 528,
+        "width": 3520,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        2448
+      ],
+      "id": "fdacd133-6cd8-430e-9a19-f176b73179b0",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## WORKFLOW 5: PERFORMANCE TRACKING\n\n\n\n\n",
+        "height": 528,
+        "width": 3520,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        3008
+      ],
+      "id": "d79de439-d9fc-4aed-9110-5ab8113024da",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=EINGABEN:\n- Titel: {{ $json.Titel }}\n- Haupt-Keyword: {{ $json['Haupt-Keyword'] }}\n- Keywords: {{ $json.Keywords }}\n- Unternehmen: {{ $json.Unternehmen }}",
+        "options": {
+          "systemMessage": "# BLOG-GLIEDERUNGS-ERSTELLER\n\n## DEINE ROLLE\nDu bist ein SEO-Content-Stratege. Du erstellst detaillierte Blog-Gliederungen.\n\n## DEINE AUFGABE\n1. ANALYSIERE die Eingaben (Titel, Keywords, Unternehmen)\n2. ERSTELLE eine logische Blog-Struktur\n3. OPTIMIERE für SEO und Lesbarkeit\n4. GEBE JSON zurück\n\n## STRUKTUR-ANFORDERUNGEN\n- 5-7 Hauptabschnitte (H2)\n- Pro H2: 2-4 Unterpunkte (H3)\n- SEO-optimiert mit Keyword-Integration\n- Logischer Aufbau vom Allgemeinen zum Spezifischen\n\n## JSON-FORMAT\nAntworte AUSSCHLIESSLICH mit diesem JSON-Format:\n\n{\n  \"h1\": \"Haupt-Titel für den Blog\",\n  \"sections\": [\n    {\n      \"h2\": \"Erste Hauptüberschrift\",\n      \"h3\": [\"Unterpunkt 1\", \"Unterpunkt 2\", \"Unterpunkt 3\"]\n    },\n    {\n      \"h2\": \"Zweite Hauptüberschrift\",\n      \"h3\": [\"Unterpunkt 1\", \"Unterpunkt 2\"]\n    }\n  ]\n}\n\n## REGELN\n✅ IMMER:\n- Keywords natürlich in Überschriften einbauen\n- Logische Reihenfolge\n- Praxisnahe H3-Unterpunkte\n\n❌ NIEMALS:\n- Keine Erklärungen außerhalb des JSON\n- Keine Markdown-Formatierung um das JSON\n- Keine zusätzlichen Texte\n\n## OUTPUT\nNUR das JSON-Objekt, sonst nichts!"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        528
+      ],
+      "id": "cd2ae7ac-f4cf-4db1-9171-9f6ba5069a73",
+      "name": "Blog-Gliederung Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hole LLM Output von der Set Node (jetzt: output_gliederung!)\nconst llmOutput = $input.first().json.output_gliederung;\n\n// Bereinige Markdown (falls vorhanden)\nlet cleaned = llmOutput\n  .replace(/```json\\n?/g, '')\n  .replace(/```\\n?/g, '')\n  .trim();\n\n// Parse JSON\nlet outline;\ntry {\n  outline = JSON.parse(cleaned);\n} catch (error) {\n  throw new Error(`JSON Parse Error: ${error.message}\\nOutput: ${cleaned}`);\n}\n\n// Hole Cluster Daten direkt vom Input (Set Node hat sie gespeichert!)\nconst clusterData = $input.first().json;\n\n// Erstelle ein Item pro Section (für Loop!)\nconst sections = outline.sections.map((section, index) => ({\n  json: {\n    section_index: index + 1,\n    total_sections: outline.sections.length,\n    h2: section.h2,\n    h3_points: section.h3,\n    \n    // Cluster Daten mitgeben (aus Set Node!)\n    haupt_keyword: clusterData['Haupt-Keyword'],\n    keywords: clusterData.Keywords,\n    titel: clusterData.Titel,\n    cluster_id: clusterData.cluster_id,\n    unternehmen: clusterData.Unternehmen\n  }\n}));\n\nreturn sections;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        528
+      ],
+      "id": "b5c4f3ee-a264-457c-9139-94cde5a8c0a5",
+      "name": "Gliederung aufteilen"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=EINGABEN:\n- H2 Überschrift: {{ $json.h2 }}\n- H3 Unterpunkte:\n{{ $json.h3_points.join('\\n- ') }}\n- Haupt-Keyword: {{ $json.haupt_keyword }}\n- Keywords: {{ $json.keywords }}\n- Unternehmen: {{ $json.unternehmen }}",
+        "options": {
+          "systemMessage": "# BLOG-ABSCHNITT-WRITER\n\n## DEINE ROLLE\nDu bist ein professioneller SEO-Content-Writer. Du schreibst informative, gut strukturierte und fesselnde Blog-Abschnitte.\n\n## DEINE AUFGABE\n1. SCHREIBE einen vollständigen Blog-Abschnitt für die gegebene H2-Überschrift\n2. INTEGRIERE die H3-Unterpunkte als Unterüberschriften\n3. BAUE Keywords SPARSAM und NATÜRLICH ein\n4. LIEFERE wertvollen, praxisnahen Content\n5. NUTZE Storytelling und direkte Ansprache\n\n## ANFORDERUNGEN\n- **Länge:** 450-600 Wörter\n- **Format:** Markdown (## für H2, ### für H3, normaler Text)\n- **Struktur:** H2 → kurze Einleitung → H3 Unterpunkte mit je 2-3 Absätzen\n- **SEO:** KRITISCH - Max. 2-3x Haupt-Keyword pro Abschnitt!\n- **Stil:** Informativ, praxisnah, leserfreundlich, professionell, emotional ansprechend\n- **Elemente:** Bullet Points wo sinnvoll, konkrete Beispiele, Storytelling-Momente\n\n## SCHREIBSTIL & TON (NEU!)\n\n### Direkte Ansprache verwenden\n✅ RICHTIG - Direkt mit \"Sie/Ihr\":\n\"Als kleines Unternehmen in Dresden stehen Sie vor der Herausforderung...\"\n\"Mit einem durchdachten System verbessern Sie die Kundenerfahrung...\"\n\"Ihr Unternehmen profitiert von automatisierten Prozessen...\"\n\n❌ FALSCH - Unpersönliche 3. Person:\n\"Kleine Unternehmen stehen vor der Herausforderung...\"\n\"Das Unternehmen profitiert von...\"\n\n### Storytelling-Elemente einbauen\nStarte Abschnitte mit:\n- Rhetorischen Fragen: \"Kennen Sie das?\"\n- Situationsbeschreibungen: \"Das Telefon klingelt ständig, E-Mails stapeln sich...\"\n- Problemen: \"Die größte Herausforderung im Alltag ist...\"\n- Emotionen: \"Frustrierend, zeitraubend, ineffizient...\"\n\n✅ RICHTIG - Mit Storytelling:\n\"Kennen Sie das? Das Telefon klingelt ständig, E-Mails stapeln sich, und mittendrin sollen Sie noch Ihren eigentlichen Job machen. Die tägliche Terminkoordination kostet nicht nur Zeit, sondern auch Nerven.\"\n\n❌ FALSCH - Trocken und steif:\n\"Die tägliche Terminkoordination über Telefon und E-Mail kostet wertvolle Zeit und erfordert viel Aufwand.\"\n\n### Natürliche, flüssige Formulierungen\n✅ RICHTIG - Lebendig und natürlich:\n\"Mit einem durchdachten Buchungssystem verbessern Sie die Kundenerfahrung und reduzieren gleichzeitig Ihren administrativen Aufwand.\"\n\n❌ FALSCH - Steif und bürokratisch:\n\"Ein durchdachtes Online-Buchungssystem für kleine Unternehmen Dresden verbessert nicht nur die Kundenerfahrung, sondern reduziert auch den administrativen Aufwand erheblich.\"\n\n## KEYWORD-INTEGRATION (SEHR WICHTIG!)\n\n❌ FALSCH - Keyword-Stuffing:\n\"Ein **online buchungssystem für kleine unternehmen dresden** bietet... \nMit einem **online buchungssystem für kleine unternehmen dresden** können...\nDas **online buchungssystem für kleine unternehmen dresden** ermöglicht...\"\n\n✅ RICHTIG - Natürliche Integration:\n\"Ein Online-Buchungssystem bietet kleinen Unternehmen in Dresden...\nMit einer professionellen Buchungslösung können Sie...\nDas System ermöglicht Ihnen eine effiziente Terminverwaltung...\"\n\n**KEYWORD-REGELN:**\n- Haupt-Keyword: MAX 2-3x pro Abschnitt (500 Wörter)\n- Statt Wiederholung: Synonyme verwenden\n  - \"Online-Buchungssystem\" statt \"online buchungssystem für kleine unternehmen dresden\"\n  - \"Buchungslösung\", \"Terminverwaltungssystem\", \"digitales Buchungstool\", \"System\"\n  - \"kleine Unternehmen\", \"KMU\", \"Selbständige\", \"Dienstleister\", \"Ihr Unternehmen\"\n- Keywords NIEMALS in Bold (**...**) setzen\n- Natürliche Sprache hat IMMER Priorität vor Keyword-Dichte\n\n## BEISPIEL-STRUKTUR\n[H2 Überschrift]\n[Storytelling-Einstieg mit direkter Ansprache, 1-2 Sätze]\n[Problem/Herausforderung beschreiben]\n[H3 Unterpunkt 1]\n[2-3 Absätze mit Details, direkter Ansprache und Storytelling]\n[Beispiel: \"Sie können mit dieser Lösung...\" statt \"Die Lösung ermöglicht...\"]\n[Konkrete Praxisbeispiele einbauen]\n[H3 Unterpunkt 2]\n[2-3 Absätze mit praktischen Tipps]\n[Direkte Ansprache verwenden]\n\nBullet Point für klare Aufzählungen\nBullet Point mit konkretem Nutzen für den Leser\nBullet Point mit Handlungsempfehlung\n\n[H3 Unterpunkt 3]\n[2-3 Absätze mit Lösungsansätzen]\n[Haupt-Keyword kann hier nochmal natürlich erwähnt werden]\n[Call-to-Action oder Verweis auf Wahlreich e.K. am Ende]\n\n## REGELN\n\n✅ IMMER:\n- Faktisch korrekt und praxisnah\n- Konkrete Beispiele einbauen\n- Keywords SPARSAM verwenden (max. 2-3x Haupt-Keyword)\n- Synonyme und Variationen nutzen\n- Direkte Ansprache mit \"Sie/Ihr/Ihnen\"\n- Storytelling-Elemente einbauen (rhetorische Fragen, Situationen, Emotionen)\n- Natürliche, flüssige Formulierungen (nicht steif!)\n- Für Menschen schreiben, nicht für Suchmaschinen\n- Lokalen Bezug einbauen (Dresden, Region Sachsen)\n- Wahlreich e.K. als Experte erwähnen wo passend (max. 1x, am Ende eines H3)\n\n❌ NIEMALS:\n- Keyword-Stuffing (mehr als 3x gleiches Keyword)\n- Keywords in Bold setzen\n- Unnatürliche Formulierungen für Keywords\n- Steife, bürokratische Sprache\n- Unpersönliche 3. Person (\"Unternehmen können...\" statt \"Sie können...\")\n- Füllwörter ohne Mehrwert\n- Wiederholungen\n- Meta-Kommentare wie \"In diesem Abschnitt...\"\n- Platzhalter wie [Beispiel hier einfügen]\n- Zu formelle oder akademische Sprache\n\n## KONKRETE SCHREIBBEISPIELE\n\n**EINLEITUNGEN:**\n\n❌ Steif: \"Kleine Unternehmen in Dresden müssen ihre Terminverwaltung optimieren, um wettbewerbsfähig zu bleiben.\"\n\n✅ Lebendig: \"Kennen Sie das Gefühl, wenn Ihr Terminkalender überquillt und Sie trotzdem wichtige Buchungen verpassen? Als Unternehmer in Dresden stehen Sie täglich vor dieser Herausforderung.\"\n\n**MITTELTEIL:**\n\n❌ Trocken: \"Die Implementierung eines Buchungssystems ermöglicht eine effizientere Arbeitsweise.\"\n\n✅ Ansprechend: \"Mit dem richtigen System gewinnen Sie wertvolle Zeit zurück. Statt stundenlang Termine zu koordinieren, konzentrieren Sie sich auf das, was wirklich zählt: Ihr Kerngeschäft.\"\n\n**ABSCHLUSS:**\n\n❌ Unpersönlich: \"Unternehmen sollten auf professionelle Anbieter setzen.\"\n\n✅ Handlungsauffordernd: \"Wahlreich e.K. unterstützt Sie dabei, eine maßgeschneiderte Lösung zu entwickeln, die perfekt zu Ihren Anforderungen passt.\"\n\n## OUTPUT\nNUR der fertige Abschnitt in Markdown-Format!"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1072,
+        528
+      ],
+      "id": "7b986b61-61af-454e-8fd7-486aa40b10b9",
+      "name": "Abschnitt schreiben Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1040,
+        720
+      ],
+      "id": "22a69aaf-0c6c-456b-86e4-d3d2d5ed3115",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "AtitqKGHj6aRHKMT",
+          "name": "Backend Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Alle Sections sammeln (nach Loop)\nconst allSections = $input.all();\n\n// Cluster Daten vom ersten Item\nconst firstItem = allSections[0].json;\n\n// Sections in richtiger Reihenfolge sortieren\nconst sections = allSections\n  .sort((a, b) => a.json.section_index - b.json.section_index)\n  .map(item => ({\n    section_index: item.json.section_index,\n    h2: item.json.h2,\n    content: item.json.output // LLM Output\n  }));\n\nreturn [{\n  json: {\n    sections: sections,\n    // Cluster Daten weitergeben\n    titel: firstItem.titel,\n    haupt_keyword: firstItem.haupt_keyword,\n    keywords: firstItem.keywords,\n    cluster_id: firstItem.cluster_id,\n    unternehmen: firstItem.unternehmen\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        528
+      ],
+      "id": "54e9c8e0-a75e-4649-aa0d-9dc285041c78",
+      "name": "Abschnitte sammeln"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1840,
+        720
+      ],
+      "id": "4d269517-5ee3-4290-b26d-82458fc6cedd",
+      "name": "Anthropic Chat Model1",
+      "credentials": {
+        "anthropicApi": {
+          "id": "AtitqKGHj6aRHKMT",
+          "name": "Backend Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        2400,
+        720
+      ],
+      "id": "60e6a23f-3704-4d5e-acb1-e17fd59442c8",
+      "name": "Anthropic Chat Model2",
+      "credentials": {
+        "anthropicApi": {
+          "id": "AtitqKGHj6aRHKMT",
+          "name": "Backend Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=EINGABEN:\n- Titel: {{ $json.titel }}\n- Haupt-Keyword: {{ $json.haupt_keyword }}\n- Secondary Keywords: {{ $json.keywords }}\n- Unternehmen: {{ $json.unternehmen }}\n\nEINLEITUNG:\n{{ $json.output_einleitung }}\n\nALLE BEHANDELTEN THEMEN:\n{{ $json['output Blog-Gliederung Agent'] }}\n\nKONTEXT:\nDer Artikel behandelt mehrere Hauptthemen rund um {{ $json.haupt_keyword }} für Unternehmen in Dresden. Nutze die H2-Überschriften aus der Gliederung für eine konkrete Zusammenfassung.",
+        "options": {
+          "systemMessage": "=# BLOG-FAZIT-WRITER\n\n## DEINE ROLLE\nDu bist ein professioneller SEO-Content-Writer. Du schreibst überzeugende Blog-Fazits mit starkem Call-to-Action.\n\n## DEINE AUFGABE\n1. FASSE die wichtigsten Punkte des Artikels zusammen (nutze die H2-Überschriften!)\n2. BAUE das Haupt-Keyword natürlich ein (max. 1x)\n3. LIEFERE einen klaren, handlungsorientierten Call-to-Action\n4. MOTIVIERE den Leser zum nächsten Schritt\n\n## ANFORDERUNGEN\n- **Länge:** 200-280 Wörter\n- **Format:** Markdown mit ## Fazit Überschrift\n- **Struktur:** Zusammenfassung → Key Points (Bullet) → CTA\n- **Ton:** Motivierend, handlungsorientiert, persönlich mit \"Sie/Ihr\"\n\n## STRUKTUR\n## Fazit\n[Absatz 1: Zusammenfassung in 2-3 Sätzen]\n[Was hat der Leser gelernt? Nutze die H2-Themen!]\n\n[Absatz 2: Key Points als Bullet Points]\nDie wichtigsten Erkenntnisse auf einen Blick:\n\n- [Punkt 1 - aus H2 Thema 1]\n- [Punkt 2 - aus H2 Thema 2]\n- [Punkt 3 - aus H2 Thema 3]\n- [Punkt 4 - aus H2 Thema 4/5]\n\n[Absatz 3: Call-to-Action]\n[Konkrete Handlungsaufforderung mit Wahlreich e.K.]\n\n## ZUSAMMENFASSUNG ERSTELLEN (WICHTIG!)\n\nDu hast die H2-Überschriften erhalten. Nutze sie für die Zusammenfassung!\n\n✅ RICHTIG - Konkrete Zusammenfassung:\n\"Ein professionelles Online-Buchungssystem verändert Ihren Geschäftsalltag grundlegend. Sie haben erfahren, warum diese Systeme für kleine Unternehmen in Dresden unverzichtbar sind, wie individuelle Lösungen Ihre Prozesse optimieren und welche Funktionen Doppelbuchungen zuverlässig verhindern. Datenschutz und DSGVO-Konformität sowie responsive Designs für mobile Kunden runden das Gesamtbild ab.\"\n\n❌ FALSCH - Zu allgemein:\n\"In diesem Artikel haben wir über Buchungssysteme gesprochen und deren Vorteile dargelegt.\"\n\n**REGEL:**\nErwähne 3-4 der behandelten H2-Themen in der Zusammenfassung! Paraphrasiere sie natürlich!\n\n## CALL-TO-ACTION VARIANTEN\n\nWähle einen passenden CTA für Wahlreich e.K.:\n\n**Beratung anbieten:**\n\"Sie möchten eine professionelle Buchungslösung für Ihr Unternehmen in Dresden? Kontaktieren Sie Wahlreich e.K. für eine kostenlose Erstberatung – gemeinsam entwickeln wir die perfekte Lösung für Ihre individuellen Anforderungen.\"\n\n**Zum Handeln auffordern:**\n\"Starten Sie noch heute mit der Optimierung Ihrer Terminverwaltung. Wahlreich e.K. unterstützt Sie von der ersten Idee bis zur erfolgreichen Implementierung – professionell, DSGVO-konform und maßgeschneidert.\"\n\n**Nächsten Schritt aufzeigen:**\n\"Der erste Schritt ist eine Analyse Ihrer aktuellen Prozesse. Das Expertenteam von Wahlreich e.K. in Dresden begleitet Sie dabei – von der Planung über die Entwicklung bis zur erfolgreichen Umsetzung Ihrer Buchungslösung.\"\n\n## BEISPIEL (RICHTIG):\n\n## Fazit\nEin professionelles Online-Buchungssystem transformiert Ihren Geschäftsalltag nachhaltig. Sie haben gesehen, warum diese Systeme für kleine Unternehmen in Dresden so wertvoll sind, wie maßgeschneiderte Lösungen Ihre spezifischen Anforderungen erfüllen und welche intelligenten Funktionen Doppelbuchungen zuverlässig verhindern. Die Bedeutung von Datenschutz und DSGVO-Konformität sowie die Vorteile responsiver Designs für mobile Buchungen runden das Gesamtkonzept ab.\n\nDie wichtigsten Erkenntnisse auf einen Blick:\n\n- Automatisierte Terminverwaltung spart täglich mehrere Stunden wertvolle Arbeitszeit\n- Individuelle Buchungslösungen passen sich perfekt an Ihre Geschäftsprozesse an\n- Intelligente Systeme verhindern Doppelbuchungen und Planungsfehler zuverlässig\n- DSGVO-konforme Lösungen schützen Ihre Kundendaten und sichern Sie rechtlich ab\n- Responsive Designs steigern Conversions und verbessern die Kundenzufriedenheit\n\nSie möchten Ihre Terminverwaltung endlich professionalisieren und von den Vorteilen eines modernen Buchungssystems profitieren? Wahlreich e.K. entwickelt maßgeschneiderte Lösungen speziell für Unternehmen in Dresden. Vereinbaren Sie jetzt ein kostenloses Beratungsgespräch und erfahren Sie, wie auch Ihr Unternehmen durch intelligente Buchungstechnologie Zeit spart und Kunden begeistert.\n\n## KEYWORD-INTEGRATION (SEHR WICHTIG!)\n\n❌ FALSCH - Keyword-Stuffing:\n\"Das Online-Buchungssystem für kleine Unternehmen Dresden bietet... Mit dem Online-Buchungssystem für kleine Unternehmen Dresden können...\"\n\n✅ RICHTIG - Natürliche Integration (max. 1x!):\n\"Ein professionelles Online-Buchungssystem transformiert Ihren Geschäftsalltag nachhaltig.\"\n\n**KEYWORD-REGELN:**\n- Haupt-Keyword: MAX 1x im gesamten Fazit\n- Statt Wiederholung: Synonyme verwenden\n  - \"System\", \"Lösung\", \"Buchungstechnologie\", \"digitale Lösung\"\n  - \"kleine Unternehmen\" → \"Ihr Unternehmen\", \"Unternehmen in Dresden\"\n- Keywords NIEMALS in Bold setzen\n- Natürliche Sprache hat IMMER Priorität\n\n## REGELN\n\n✅ IMMER:\n- Direkte Ansprache (Sie/Ihr/Ihnen)\n- Positiv und motivierend\n- Konkrete Zusammenfassung der H2-Themen (3-4 erwähnen!)\n- 4-5 Bullet Points mit Key Takeaways\n- Starker, konkreter Call-to-Action\n- Haupt-Keyword max. 1x natürlich einbauen\n- Wahlreich e.K. im CTA erwähnen\n- Lokalen Bezug (Dresden) einbauen\n\n❌ NIEMALS:\n- \"Zusammenfassend lässt sich sagen...\" (zu steif)\n- Neue Informationen einführen\n- Zu aggressiv verkaufen\n- Mehrere verschiedene CTAs (verwirrt)\n- Über 280 Wörter\n- Allgemeine Zusammenfassung ohne Bezug zu den tatsächlichen H2-Themen\n- Keyword-Stuffing (mehr als 1x Haupt-Keyword)\n\n## KONKRETE SCHREIBBEISPIELE\n\n**ZUSAMMENFASSUNG:**\n\n❌ Steif: \"Zusammenfassend wurden verschiedene Aspekte von Buchungssystemen erläutert.\"\n\n✅ Lebendig: \"Ein professionelles Online-Buchungssystem verändert Ihren Geschäftsalltag grundlegend. Sie haben erfahren, warum...\"\n\n**BULLET POINTS:**\n\n❌ Trocken: \"Buchungssysteme bieten Vorteile\"\n\n✅ Konkret: \"Automatisierte Terminverwaltung spart täglich mehrere Stunden wertvolle Arbeitszeit\"\n\n**CALL-TO-ACTION:**\n\n❌ Schwach: \"Kontaktieren Sie uns bei Interesse.\"\n\n✅ Stark: \"Sie möchten Ihre Terminverwaltung endlich professionalisieren? Wahlreich e.K. entwickelt maßgeschneiderte Lösungen speziell für Unternehmen in Dresden. Vereinbaren Sie jetzt ein kostenloses Beratungsgespräch!\"\n\n## OUTPUT\nNUR das fertige Fazit mit ## Fazit Überschrift!"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        528
+      ],
+      "id": "a3aeb8ac-70a2-4da7-b679-bf737f0eb0cd",
+      "name": "Fazit schreiben"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.sections }}",
+        "options": {
+          "systemMessage": "# BLOG-EINLEITUNGS-WRITER\n\n## DEINE ROLLE\nDu bist ein professioneller SEO-Content-Writer. Du schreibst packende Blog-Einleitungen die Leser fesseln und neugierig machen.\n\n## DEINE AUFGABE\n1. FANGE mit einem starken Hook an (Frage, Problem, Emotion)\n2. BAUE das Haupt-Keyword natürlich ein (in den ersten 100 Wörtern, max. 1x!)\n3. GEBE einen konkreten Preview auf die Inhalte (nutze die H2-Überschriften!)\n4. MACHE neugierig auf den Rest des Artikels\n\n## ANFORDERUNGEN\n- **Länge:** 200-280 Wörter (3 Absätze)\n- **Format:** Markdown (normale Absätze, keine Überschriften)\n- **Hook:** Erste Zeile muss emotional oder mit Frage starten\n- **Keyword:** Im ersten oder zweiten Absatz natürlich einbauen (max. 1x!)\n- **Preview:** Konkrete Themen aus den H2-Überschriften erwähnen\n- **Ton:** Direkte Ansprache mit \"Sie/Ihr\", emotional, einladend\n\n## HOOK-VARIANTEN\n\n✅ Rhetorische Frage:\n\"Verlieren Sie täglich wertvolle Zeit durch chaotische Terminverwaltung?\"\n\n✅ Problem-Beschreibung mit Emotion:\n\"Das Telefon klingelt ständig, E-Mails stapeln sich, und mittendrin sollen Sie noch Ihr Geschäft führen – kennen Sie das frustrierende Gefühl?\"\n\n✅ Situationsbeschreibung:\n\"Stellen Sie sich vor: Es ist Montagmorgen, Ihr Terminkalender ist bereits perfekt organisiert – ohne dass Sie einen Finger gerührt haben.\"\n\n## STRUKTUR\n[Absatz 1: Hook - Frage/Problem/Emotion]\n[Problem vertiefen, Haupt-Keyword natürlich einbauen]\n[Absatz 2: Kontext & Lösung]\n[Warum ist das Thema wichtig? Welche Lösung gibt es?]\n[Absatz 3: Preview - Was erwartet den Leser]\n[Konkreter Überblick: Erwähne 3-4 H2-Themen aus der Liste!]\n\n## PREVIEW-GESTALTUNG (SEHR WICHTIG!)\n\nDu hast die tatsächlichen H2-Überschriften erhalten. Nutze sie im Preview!\n\n✅ RICHTIG - Konkrete Themen erwähnen:\n\"In diesem Artikel erfahren Sie, warum ein Online-Buchungssystem gerade für kleine Unternehmen in Dresden so wertvoll ist. Wir zeigen Ihnen, wie individuelle Buchungslösungen Ihre Prozesse optimieren, wie Sie Doppelbuchungen zuverlässig vermeiden und worauf Sie bei Datenschutz und DSGVO-Konformität achten müssen. Außerdem entdecken Sie, wie responsive Systeme Ihren Umsatz steigern können.\"\n\n❌ FALSCH - Zu allgemein:\n\"In diesem Artikel erfahren Sie alles über Buchungssysteme und wie Sie diese nutzen können.\"\n\n**REGEL:**\nWähle 3-4 H2-Überschriften aus und formuliere sie natürlich um. Verwende NICHT die exakten Überschriften, sondern paraphrasiere sie!\n\n## BEISPIEL (RICHTIG):\n\n\"Kennen Sie das frustrierende Gefühl, wenn wichtige Termine durcheinander geraten und Kunden unzufrieden sind? Als Unternehmer in Dresden kämpfen Sie täglich mit der Herausforderung, Ihr Geschäft professionell zu führen und gleichzeitig alle Termine im Blick zu behalten. Die manuelle Terminkoordination kostet nicht nur Zeit, sondern auch Nerven.\n\nEin durchdachtes Online-Buchungssystem kann genau diese Probleme lösen. Statt stundenlang Termine zu koordinieren, arbeitet das System automatisch für Sie – rund um die Uhr. Ihre Kunden buchen selbstständig, Doppelbuchungen gehören der Vergangenheit an, und Sie gewinnen wertvolle Zeit für Ihr Kerngeschäft.\n\nIn diesem Artikel erfahren Sie, warum ein modernes Buchungssystem für kleine Unternehmen in Dresden unverzichtbar ist. Wir zeigen Ihnen, welche individuellen Lösungen es für Dienstleister gibt, wie intelligente Terminverwaltung Doppelbuchungen verhindert und worauf Sie beim Datenschutz achten müssen. Außerdem entdecken Sie, wie responsive Buchungsfunktionen Ihren Umsatz nachhaltig steigern können.\"\n\n## REGELN\n\n✅ IMMER:\n- Direkte Ansprache (Sie/Ihr/Ihnen)\n- Emotional und einladend starten\n- Problem → Lösung → Konkreter Preview\n- Haupt-Keyword max. 1x natürlich einbauen\n- 3-4 H2-Themen im Preview erwähnen (paraphrasiert!)\n- Lokalen Bezug (Dresden/Sachsen) verwenden\n- Neugierig machen auf den Artikel\n\n❌ NIEMALS:\n- Langweilig starten wie \"In diesem Artikel geht es um...\"\n- Keyword erzwingen wenn unnatürlich\n- H2-Überschriften exakt kopieren (paraphrasiere sie!)\n- Zu viel versprechen was nicht gehalten wird\n- Werblich oder verkaufsorientiert klingen\n- Mehr als 280 Wörter\n- Überschriften (H1/H2/H3) verwenden\n- Den Preview weglassen oder zu allgemein halten\n\n## OUTPUT\nNUR die fertige Einleitung (3 Absätze), keine Überschriften!"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1840,
+        528
+      ],
+      "id": "2e8fad28-5747-4bbb-b988-a8e4657b7b91",
+      "name": "Einleitung schreiben Agent"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 10,
+              "triggerAtMinute": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        48,
+        1040
+      ],
+      "id": "c428b907-055f-4476-ac50-3e34802bac86",
+      "name": "Schedule Trigger2"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZkbJyqYZh8Vgrz",
+          "mode": "list",
+          "cachedResultName": "SEO Blog Content System",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNeDpdesqPR9Pfg",
+          "mode": "list",
+          "cachedResultName": "Blog Content",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz/tblNeDpdesqPR9Pfg"
+        },
+        "filterByFormula": "{Status} = \"Offen\"",
+        "returnAll": false,
+        "options": {
+          "fields": [
+            "Bild Prompts",
+            "Titel",
+            "Cluster ID"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        1040
+      ],
+      "id": "aaea97f2-8d9a-433e-a495-ae894bb29535",
+      "name": "Search records3",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "56WbrC6ptGkgXQP8",
+          "name": "Airtable Office Account Business"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0e553b8b-5ae3-4cf9-bc72-6d168c7bd7d9",
+              "name": "Titel",
+              "value": "={{ $('Search records2').item.json.Titel }}",
+              "type": "string"
+            },
+            {
+              "id": "672600db-c39a-4391-9e2a-a15bf382be3d",
+              "name": "Haupt-Keyword",
+              "value": "={{ $('Search records2').item.json['Haupt-Keyword'] }}",
+              "type": "string"
+            },
+            {
+              "id": "b3ccd655-2468-4269-80cd-519a97b02c0f",
+              "name": "Keywords",
+              "value": "={{ $('Search records2').item.json.Keywords }}",
+              "type": "string"
+            },
+            {
+              "id": "60f89d41-8408-4366-9cef-66c48a3a14d0",
+              "name": "Unternehmen",
+              "value": "={{ $('Search records2').item.json.Unternehmen }}",
+              "type": "string"
+            },
+            {
+              "id": "8cb4621c-47ae-478c-a23b-7f4dbe38df14",
+              "name": "cluster_id",
+              "value": "={{ $('Search records2').item.json['Cluster ID'] }}",
+              "type": "string"
+            },
+            {
+              "id": "45ced3c9-a883-45c1-8cd6-156a8e0c92a7",
+              "name": "output_gliederung",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        704,
+        528
+      ],
+      "id": "e084c7d2-dc2d-4440-82d4-a4fd55695521",
+      "name": "Gliederung Daten behalten"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8945fc2c-2c77-43ca-8bf6-0b7b2d5dbdb4",
+              "name": "section_index",
+              "value": "={{ $('Gliederung aufteilen').item.json.section_index }}",
+              "type": "string"
+            },
+            {
+              "id": "6c8ad466-a5e7-4e56-b9d4-b20e02a6a451",
+              "name": "total_sections",
+              "value": "={{ $('Gliederung aufteilen').item.json.total_sections }}",
+              "type": "string"
+            },
+            {
+              "id": "9850c972-8d21-4e6c-b5f1-5678b875a2a0",
+              "name": "h2",
+              "value": "={{ $('Gliederung aufteilen').item.json.h2 }}",
+              "type": "string"
+            },
+            {
+              "id": "4e4636ae-b3bc-4e23-9c25-9068edb66907",
+              "name": "h3_points",
+              "value": "={{ $('Gliederung aufteilen').item.json.h3_points }}",
+              "type": "string"
+            },
+            {
+              "id": "fbcef5d5-97b1-4e9f-a84d-08e009361e2f",
+              "name": "titel",
+              "value": "={{ $('Search records2').item.json.Titel }}",
+              "type": "string"
+            },
+            {
+              "id": "4f3c5bcc-e77b-4354-830c-09653000603c",
+              "name": "haupt_keyword",
+              "value": "={{ $('Search records2').item.json['Haupt-Keyword'] }}",
+              "type": "string"
+            },
+            {
+              "id": "e712d751-18ff-4eb0-8cce-1623119ea1ca",
+              "name": "keywords",
+              "value": "={{ $('Search records2').item.json.Keywords }}",
+              "type": "string"
+            },
+            {
+              "id": "20d2f42c-89e3-4739-b978-3b0056563710",
+              "name": "cluster_id",
+              "value": "={{ $('Search records2').item.json['Cluster ID'] }}",
+              "type": "string"
+            },
+            {
+              "id": "3bd1a03e-4b51-4b60-bdcb-060caecd4cf5",
+              "name": "unternehmen",
+              "value": "={{ $('Search records2').item.json.Unternehmen }}",
+              "type": "string"
+            },
+            {
+              "id": "5cad5306-61da-40b0-8aff-9728ef5afae0",
+              "name": "output Abschnitt Schreiben Agent",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "616ff9a8-5815-4fc6-bd36-4ff3caa9346e",
+              "name": "output Blog-Gliederung Agent",
+              "value": "={{ $('Blog-Gliederung Agent').item.json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        528
+      ],
+      "id": "b187b3f8-0680-4a52-bb82-e28c8a571a38",
+      "name": "Abschnitt Daten behalten"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6d725150-b45b-407d-99a1-d7daa19c1689",
+              "name": "sections",
+              "value": "={{ $('Abschnitte sammeln').item.json.sections }}",
+              "type": "string"
+            },
+            {
+              "id": "5d103ae4-9d3a-4055-9ea1-c52a36f6e82a",
+              "name": "titel",
+              "value": "={{ $('Abschnitte sammeln').item.json.titel }}",
+              "type": "string"
+            },
+            {
+              "id": "75f2c767-e5f2-4ce7-84a3-df80f46d2258",
+              "name": "haupt_keyword",
+              "value": "={{ $('Abschnitte sammeln').item.json.haupt_keyword }}",
+              "type": "string"
+            },
+            {
+              "id": "07b66c16-de06-4e84-916e-3fe8554eb0fc",
+              "name": "keywords",
+              "value": "={{ $('Abschnitte sammeln').item.json.keywords }}",
+              "type": "string"
+            },
+            {
+              "id": "48dfe157-cb47-4521-b583-f600b4c104be",
+              "name": "cluster_id",
+              "value": "={{ $('Abschnitte sammeln').item.json.cluster_id }}",
+              "type": "string"
+            },
+            {
+              "id": "9ab3d026-36d4-4e3f-86b1-0a0f05690901",
+              "name": "unternehmen",
+              "value": "={{ $('Abschnitte sammeln').item.json.unternehmen }}",
+              "type": "string"
+            },
+            {
+              "id": "04ff50fe-09a3-4859-b941-c6fd977aa3c1",
+              "name": "output_einleitung",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "a1facdce-b46c-4c44-a0ce-eec2f838f998",
+              "name": "output Abschnitt Schreiben Agent",
+              "value": "={{ $('Abschnitt Daten behalten').all() }}",
+              "type": "string"
+            },
+            {
+              "id": "902d97ff-1a97-4cc4-8d57-289c5f7a8247",
+              "name": "output Blog-Gliederung Agent",
+              "value": "={{ $('Gliederung Daten behalten').first().json.output_gliederung }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2176,
+        528
+      ],
+      "id": "51506525-aed7-49d8-be96-2eec89bdd6ee",
+      "name": "Einleitung Daten behalten"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1b2e0ada-0086-42eb-a00a-551836bfd0d2",
+              "name": "titel",
+              "value": "={{ $('Einleitung Daten behalten').item.json.titel }}",
+              "type": "string"
+            },
+            {
+              "id": "c7f28825-2bd3-4fab-ad22-5ce2ee48ccaa",
+              "name": "haupt_keyword",
+              "value": "={{ $('Einleitung Daten behalten').item.json.haupt_keyword }}",
+              "type": "string"
+            },
+            {
+              "id": "1f188637-5a18-402a-8955-3837fc2ea041",
+              "name": "keywords",
+              "value": "={{ $('Einleitung Daten behalten').item.json.keywords }}",
+              "type": "string"
+            },
+            {
+              "id": "ac5e9e8d-b44e-4d0b-b0e3-606c920692e3",
+              "name": "cluster_id",
+              "value": "={{ $('Einleitung Daten behalten').item.json.cluster_id }}",
+              "type": "string"
+            },
+            {
+              "id": "4731d6ef-6152-436a-9af3-16674fce479d",
+              "name": "unternehmen",
+              "value": "={{ $('Einleitung Daten behalten').item.json.unternehmen }}",
+              "type": "string"
+            },
+            {
+              "id": "87797aa3-d071-494a-941e-3ee2d54b27a6",
+              "name": "output_einleitung",
+              "value": "={{ $('Einleitung Daten behalten').item.json.output_einleitung }}",
+              "type": "string"
+            },
+            {
+              "id": "b5dca939-305c-4658-8954-d7adbf073fc3",
+              "name": "output_fazit",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "0d7effec-9c86-448b-87c1-0e07eaf05a97",
+              "name": "output_blog_gliederung",
+              "value": "={{ $('Einleitung Daten behalten').item.json['output Blog-Gliederung Agent'] }}",
+              "type": "string"
+            },
+            {
+              "id": "4e4e9faf-96a8-47d9-99d8-75e81c3103e8",
+              "name": "output_abschnitte_alle",
+              "value": "={{ $('Einleitung Daten behalten').item.json['output Abschnitt Schreiben Agent'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2704,
+        528
+      ],
+      "id": "ab92f0b5-5184-4638-8e0e-361f884d8744",
+      "name": "Fazit Daten behalten"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appZkbJyqYZh8Vgrz",
+          "mode": "list",
+          "cachedResultName": "SEO Blog Content System",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNeDpdesqPR9Pfg",
+          "mode": "list",
+          "cachedResultName": "Blog Content",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz/tblNeDpdesqPR9Pfg"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Cluster ID": "={{ $json.cluster_id }}",
+            "Titel": "={{ $json.titel }}",
+            "Keywords": "={{ $json.keywords }}",
+            "Hauptkeyword": "={{ $json.haupt_keyword }}",
+            "Output Blog-Gliederung Agent": "={{ $json.output_blog_gliederung }}",
+            "Output Abschnitt schreiben Agent": "={{ $json.output_abschnitte_alle }}",
+            "Output Einleitung schreiben Agent": "={{ $json.output_einleitung }}",
+            "Output Fazit schreiben Agent": "={{ $json.output_fazit }}",
+            "Unternehmen": "={{ $json.unternehmen }}",
+            "Status": "Offen"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Titel",
+              "displayName": "Titel",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Unternehmen",
+              "displayName": "Unternehmen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Cluster ID",
+              "displayName": "Cluster ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Hauptkeyword",
+              "displayName": "Hauptkeyword",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Keywords",
+              "displayName": "Keywords",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Output Blog-Gliederung Agent",
+              "displayName": "Output Blog-Gliederung Agent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Output Abschnitt schreiben Agent",
+              "displayName": "Output Abschnitt schreiben Agent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Output Einleitung schreiben Agent",
+              "displayName": "Output Einleitung schreiben Agent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Output Fazit schreiben Agent",
+              "displayName": "Output Fazit schreiben Agent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Website Text",
+              "displayName": "Website Text",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Meta Description Generator",
+              "displayName": "Meta Description Generator",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Bild Prompts",
+              "displayName": "Bild Prompts",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Erstellt am",
+              "displayName": "Erstellt am",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Alt Text",
+              "displayName": "Alt Text",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2896,
+        528
+      ],
+      "id": "ad50072a-2867-46f5-a173-b24b246e6105",
+      "name": "Create a record2",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "56WbrC6ptGkgXQP8",
+          "name": "Airtable Office Account Business"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## WORKFLOW 3: Bild Generierung\n\n\n\n\n\n",
+        "height": 528,
+        "width": 3520,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        896
+      ],
+      "id": "b56ab7d7-0806-48c4-ad6b-2486b43c3e88",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash-image",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash-image (Nano Banana)"
+        },
+        "prompt": "={{ $json.prompt }}",
+        "options": {
+          "binaryPropertyOutput": "data"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        656,
+        1040
+      ],
+      "id": "3a9e1a56-f615-47fb-a519-bccfbfc12200",
+      "name": "Generate an image",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YweFtCNvasslp7VD",
+          "name": "Google Gemini backend"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        704
+      ],
+      "id": "0af432b4-88b4-422c-9409-809845cfa06d",
+      "name": "Anthropic Chat Model3",
+      "credentials": {
+        "anthropicApi": {
+          "id": "AtitqKGHj6aRHKMT",
+          "name": "Backend Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1808,
+        224
+      ],
+      "id": "8e532cf2-63bb-4b0d-8349-765232a2228f",
+      "name": "Anthropic Chat Model4",
+      "credentials": {
+        "anthropicApi": {
+          "id": "AtitqKGHj6aRHKMT",
+          "name": "Backend Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        2864,
+        208
+      ],
+      "id": "c850e1c0-61c9-4498-9fc1-2596fc77390e",
+      "name": "Anthropic Chat Model5",
+      "credentials": {
+        "anthropicApi": {
+          "id": "AtitqKGHj6aRHKMT",
+          "name": "Backend Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "=data",
+        "driveId": {
+          "__rl": true,
+          "value": "0AEX5TH2Mux4DUk9PVA",
+          "mode": "list",
+          "cachedResultName": "KI Agent",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/0AEX5TH2Mux4DUk9PVA"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1mwENl62kCLzOOSOw576J6rQ_mPC_d21o",
+          "mode": "list",
+          "cachedResultName": "Bilder Blog Beitrag",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1mwENl62kCLzOOSOw576J6rQ_mPC_d21o"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1056,
+        1040
+      ],
+      "id": "355bd5b3-6b24-43f0-a148-4595d9f746e9",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "vvzwFjCm1eCOoLDH",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZkbJyqYZh8Vgrz",
+          "mode": "list",
+          "cachedResultName": "SEO Blog Content System",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblLbDIEWlP5sU3BA",
+          "mode": "list",
+          "cachedResultName": "Unternehmen",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz/tblLbDIEWlP5sU3BA"
+        },
+        "filterByFormula": "{Firmenname} = \"VOELTEC-Völkel Elektrotechnik GmbH\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        192,
+        64
+      ],
+      "id": "87a02916-64d5-40a0-9056-78253c8b6018",
+      "name": "Search records",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "56WbrC6ptGkgXQP8",
+          "name": "Airtable Office Account Business"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZkbJyqYZh8Vgrz",
+          "mode": "list",
+          "cachedResultName": "SEO Blog Content System",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNeDpdesqPR9Pfg",
+          "mode": "list",
+          "cachedResultName": "Blog Content",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz/tblNeDpdesqPR9Pfg"
+        },
+        "filterByFormula": "={Unternehmen} = \"{{ $json.Firmenname }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        384,
+        64
+      ],
+      "id": "25d6ae66-685f-43b4-aa48-49c3b918b894",
+      "name": "Hole existierende Blogs",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "56WbrC6ptGkgXQP8",
+          "name": "Airtable Office Account Business"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const existingBlogs = $input.all();\n\n// Sammle alle Haupt-Keywords und Titel\nconst usedTopics = existingBlogs\n  .map(blog => {\n    // In n8n ist die Struktur: blog.json (nicht blog.json.fields!)\n    const keyword = blog.json['Haupt-Keyword'];\n    const titel = blog.json.Titel;\n    return [keyword, titel].filter(Boolean);\n  })\n  .flat()\n  .join(', ');\n\n// Wenn keine Blogs existieren\nconst exclusionText = usedTopics.length > 0 \n  ? `⚠️ WICHTIG: Wähle ein NEUES Thema. Diese Themen wurden bereits behandelt: ${usedTopics}`\n  : '';\n\nreturn [{\n  json: {\n    exclusion_list: exclusionText,\n    anzahl_blogs: existingBlogs.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        64
+      ],
+      "id": "35508757-e946-4533-9bbb-01d72178140e",
+      "name": "Hole existierende Blogs1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "59925ac2-d1dd-4038-88e4-693f0022c93c",
+              "name": "trendsText",
+              "value": "={{ $json.trendsText }}",
+              "type": "string"
+            },
+            {
+              "id": "dfbcaa46-6f9c-4913-ab41-158f288f6698",
+              "name": "exclusion_list",
+              "value": "={{ $('Hole existierende Blogs1').item.json.exclusion_list }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1216,
+        64
+      ],
+      "id": "cb5dac38-cdb2-402e-b577-c9cea1d7401f",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hole den Titel direkt aus Search records3\nconst titel = $input.first().json.Titel || 'Unbekannt';\n\n// Hole die Bild Prompts\nconst bildPromptsRaw = $input.first().json['Bild Prompts'].value;\n\n// Parse JSON\nlet prompts;\ntry {\n  prompts = JSON.parse(bildPromptsRaw);\n} catch (error) {\n  throw new Error(`JSON Parse Error: ${error.message}`);\n}\n\n// Hole Record-ID\nconst recordId = $input.first().json.id;\n\n// Erstelle 7 separate Items (für Loop!)\nconst promptArray = [\n  { type: 'Header', prompt: prompts.header, index: 1, sort: 'header' },\n  { type: 'Section 1', prompt: prompts.section_1, index: 2, sort: 'section-1' },\n  { type: 'Section 2', prompt: prompts.section_2, index: 3, sort: 'section-2' },\n  { type: 'Section 3', prompt: prompts.section_3, index: 4, sort: 'section-3' },\n  { type: 'Section 4', prompt: prompts.section_4, index: 5, sort: 'section-4' },\n  { type: 'Section 5', prompt: prompts.section_5, index: 6, sort: 'section-5' },\n  { type: 'Fazit', prompt: prompts.fazit, index: 7, sort: 'fazit' }\n];\n\n// Gib 7 Items zurück mit Titel in jedem Item!\nreturn promptArray.map(item => ({\n  json: {\n    blog_record_id: recordId,\n    blog_titel: titel,                    // ← Titel aus Search records3!\n    medientitel: `${item.type} - ${titel}`,\n    typ: item.type,\n    prompt: item.prompt,\n    index: item.index,\n    sort: item.sort\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        1040
+      ],
+      "id": "697ec280-8b39-4d0d-b66a-5e2f7d6851a1",
+      "name": "Bild-Prompts aufteilen"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Hole Binary Data\nconst binaryData = $input.item.binary.data;\n\n// Hole medientitel direkt von \"Bild-Prompts aufteilen\" Node\nconst medientitel = $('Bild-Prompts aufteilen').item.json.medientitel;\n\n// Bereinige für Dateinamen\nconst cleanFileName = medientitel\n  .replace(/\\s+/g, '-')\n  .replace(/ä/g, 'ae')\n  .replace(/ö/g, 'oe')\n  .replace(/ü/g, 'ue')\n  .replace(/Ä/g, 'Ae')\n  .replace(/Ö/g, 'Oe')\n  .replace(/Ü/g, 'Ue')\n  .replace(/ß/g, 'ss')\n  .replace(/[^a-zA-Z0-9-]/g, '')\n  .substring(0, 80);\n\nconst newFileName = `${cleanFileName}.png`;\n\n// Return\nreturn {\n  json: $input.item.json,\n  binary: {\n    data: {\n      ...binaryData,\n      fileName: newFileName\n    }\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        1040
+      ],
+      "id": "afa58ab0-b876-4f75-9c7a-2b5b903a2270",
+      "name": "Dateinamen mit Titel setzen"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appZkbJyqYZh8Vgrz",
+          "mode": "list",
+          "cachedResultName": "SEO Blog Content System",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblhuHnysMeAEqWWO",
+          "mode": "list",
+          "cachedResultName": "Blog Themen Cluster",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz/tblhuHnysMeAEqWWO"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Cluster ID": "={{ $('Search records3').first().json['Cluster ID'] }}",
+            "Status": "Veröffentlicht"
+          },
+          "matchingColumns": [
+            "Cluster ID"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Titel",
+              "displayName": "Titel",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Cluster ID",
+              "displayName": "Cluster ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Unternehmen",
+              "displayName": "Unternehmen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Haupt-Keyword",
+              "displayName": "Haupt-Keyword",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Keywords",
+              "displayName": "Keywords",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Erstellt am",
+              "displayName": "Erstellt am",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1264,
+        1040
+      ],
+      "id": "7186b1ad-3168-4ae4-b692-d47cfe41e9c7",
+      "name": "Update record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "56WbrC6ptGkgXQP8",
+          "name": "Airtable Office Account Business"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appZkbJyqYZh8Vgrz",
+          "mode": "list",
+          "cachedResultName": "SEO Blog Content System",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNeDpdesqPR9Pfg",
+          "mode": "list",
+          "cachedResultName": "Blog Content",
+          "cachedResultUrl": "https://airtable.com/appZkbJyqYZh8Vgrz/tblNeDpdesqPR9Pfg"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Cluster ID": "={{ $json.fields['Cluster ID'] }}",
+            "Status": "Veröffentlicht"
+          },
+          "matchingColumns": [
+            "Cluster ID"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Titel",
+              "displayName": "Titel",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Unternehmen",
+              "displayName": "Unternehmen",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Cluster ID",
+              "displayName": "Cluster ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Hauptkeyword",
+              "displayName": "Hauptkeyword",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Keywords",
+              "displayName": "Keywords",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Output Blog-Gliederung Agent",
+              "displayName": "Output Blog-Gliederung Agent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Output Abschnitt schreiben Agent",
+              "displayName": "Output Abschnitt schreiben Agent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Output Einleitung schreiben Agent",
+              "displayName": "Output Einleitung schreiben Agent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Output Fazit schreiben Agent",
+              "displayName": "Output Fazit schreiben Agent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Website Text",
+              "displayName": "Website Text",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Meta Description Generator",
+              "displayName": "Meta Description Generator",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Bild Prompts",
+              "displayName": "Bild Prompts",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Erstellt am",
+              "displayName": "Erstellt am",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Alt Text",
+              "displayName": "Alt Text",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1472,
+        1040
+      ],
+      "id": "1b65e908-0bf7-499d-8d93-61ef0a5d1d0f",
+      "name": "Update record1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "56WbrC6ptGkgXQP8",
+          "name": "Airtable Office Account Business"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity - Blog Topic Research Node": {
+      "main": [
+        [
+          {
+            "node": "Trends extrahieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trends extrahieren": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity - Keyword Recherche": {
+      "main": [
+        [
+          {
+            "node": "Keywords aufteilen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keywords aufteilen": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain - Keyword Relevanz bewerten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain - Keyword Relevanz bewerten": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Search records2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [
+          {
+            "node": "Alle Keywords sammeln",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alle Keywords sammeln": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain - Keywords clustern",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain - Keywords clustern": {
+      "main": [
+        [
+          {
+            "node": "Cluster aufteilen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cluster aufteilen": {
+      "main": [
+        [
+          {
+            "node": "Create a record1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records2": {
+      "main": [
+        [
+          {
+            "node": "Blog-Gliederung Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Blog-Gliederung Agent": {
+      "main": [
+        [
+          {
+            "node": "Gliederung Daten behalten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gliederung aufteilen": {
+      "main": [
+        [
+          {
+            "node": "Abschnitt schreiben Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Abschnitt schreiben Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abschnitt schreiben Agent": {
+      "main": [
+        [
+          {
+            "node": "Abschnitt Daten behalten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abschnitte sammeln": {
+      "main": [
+        [
+          {
+            "node": "Einleitung schreiben Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Einleitung schreiben Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Fazit schreiben",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Einleitung schreiben Agent": {
+      "main": [
+        [
+          {
+            "node": "Einleitung Daten behalten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Search records3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records3": {
+      "main": [
+        [
+          {
+            "node": "Bild-Prompts aufteilen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gliederung Daten behalten": {
+      "main": [
+        [
+          {
+            "node": "Gliederung aufteilen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abschnitt Daten behalten": {
+      "main": [
+        [
+          {
+            "node": "Abschnitte sammeln",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Einleitung Daten behalten": {
+      "main": [
+        [
+          {
+            "node": "Fazit schreiben",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fazit schreiben": {
+      "main": [
+        [
+          {
+            "node": "Fazit Daten behalten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fazit Daten behalten": {
+      "main": [
+        [
+          {
+            "node": "Create a record2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Blog-Gliederung Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain - Keyword Relevanz bewerten",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain - Keywords clustern",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate an image": {
+      "main": [
+        [
+          {
+            "node": "Dateinamen mit Titel setzen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "Hole existierende Blogs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hole existierende Blogs": {
+      "main": [
+        [
+          {
+            "node": "Hole existierende Blogs1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hole existierende Blogs1": {
+      "main": [
+        [
+          {
+            "node": "Perplexity - Blog Topic Research Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Perplexity - Keyword Recherche",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bild-Prompts aufteilen": {
+      "main": [
+        [
+          {
+            "node": "Generate an image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dateinamen mit Titel setzen": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record": {
+      "main": [
+        [
+          {
+            "node": "Update record1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "77c78be6-0662-472d-bace-1668bfc939a5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f3b61e97f56cc997cdb35db31a8cb42da52533513c024a11c0445175f1db95db"
+  },
+  "id": "k8dxHbg8uODlphgJ",
+  "tags": []
+}
