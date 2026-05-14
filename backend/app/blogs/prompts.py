@@ -71,11 +71,36 @@ REGELN:
 OUTPUT: Nur den Markdown-Text des Fazits, keine Meta-Kommentare."""
 
 
+def build_style_system_prompt(base_prompt: str, style_context: str | None) -> str:
+    """Enrich a base system prompt with company style context.
+
+    If style_context is provided, it is appended to the base prompt
+    with clear instructions for the LLM to follow the company's
+    writing style consistently.
+
+    Args:
+        base_prompt: The base system prompt for the pipeline step.
+        style_context: Formatted style context string, or None.
+
+    Returns:
+        The enriched system prompt, or the base prompt unchanged if no style.
+    """
+    if not style_context:
+        return base_prompt
+
+    return f"""{base_prompt}
+
+UNTERNEHMENS-SCHREIBSTIL (WICHTIG — befolge diese Vorgaben):
+{style_context}
+
+Wende diesen Schreibstil konsequent an: Tonalitaet, Ansprache-Form, \
+Fachvokabular und Markenstimme muessen sich im gesamten Text widerspiegeln."""
+
+
 def build_outline_prompt(
     title: str,
     primary_keyword: str | None,
     secondary_keywords: list[str],
-    style_profile: str | None,
     context_material: str | None,
     target_word_count: int,
     language: str,
@@ -92,8 +117,6 @@ def build_outline_prompt(
         parts.append(f"Haupt-Keyword: {primary_keyword}")
     if secondary_keywords:
         parts.append(f"Neben-Keywords: {', '.join(secondary_keywords)}")
-    if style_profile:
-        parts.append(f"\nSchreibstil des Unternehmens:\n{style_profile}")
     if context_material:
         parts.append(f"\nZusaetzliches Quellmaterial:\n{context_material[:3000]}")
 
@@ -104,7 +127,6 @@ def build_section_prompt(
     section: dict[str, object],
     primary_keyword: str | None,
     secondary_keywords: list[str],
-    style_profile: str | None,
     language: str,
     tone: str,
 ) -> str:
@@ -127,8 +149,6 @@ def build_section_prompt(
         parts.append(f"Haupt-Keyword: {primary_keyword}")
     if secondary_keywords:
         parts.append(f"Neben-Keywords: {', '.join(secondary_keywords)}")
-    if style_profile:
-        parts.append(f"\nSchreibstil:\n{style_profile}")
 
     return "\n".join(parts)
 

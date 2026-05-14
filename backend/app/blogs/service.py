@@ -17,6 +17,7 @@ from app.blogs.prompts import (
     build_intro_prompt,
     build_outline_prompt,
     build_section_prompt,
+    build_style_system_prompt,
 )
 from app.blogs.schemas import BlogGenerateRequest
 from app.core.config import get_settings
@@ -74,6 +75,50 @@ def _extract_json(text: str) -> dict[str, Any]:
         return json.loads(match.group(1))  # type: ignore[no-any-return]
     # Try raw JSON
     return json.loads(text)  # type: ignore[no-any-return]
+
+
+def _build_style_context(style_profile: dict[str, Any]) -> str:
+    """Build a rich style context string from structured style profile data.
+
+    Extracts and formats tonality, formality, address form, vocabulary,
+    brand values, and writing guidelines into a cohesive instruction
+    for the LLM. Falls back to text summary if structured data is missing.
+
+    Args:
+        style_profile: Dict with "text" (str) and optional "data" (dict) keys.
+
+    Returns:
+        Formatted style context string, or empty string if no data available.
+    """
+    data: dict[str, Any] = style_profile.get("data", {})
+    text: str = style_profile.get("text", "")
+
+    if not data:
+        return text
+
+    parts: list[str] = []
+
+    if summary := data.get("summary"):
+        parts.append(f"Zusammenfassung: {summary}")
+    if tonality := data.get("tonality"):
+        parts.append(f"Tonalitaet: {tonality}")
+    if formality := data.get("formality_level"):
+        parts.append(f"Formalitaetsgrad: {formality}")
+    if address := data.get("address_form"):
+        label = {"du": "Du-Ansprache", "Sie": "Sie-Ansprache", "neutral": "Neutrale Ansprache"}
+        parts.append(f"Ansprache: {label.get(address, address)}")
+    if sentence_style := data.get("sentence_style"):
+        parts.append(f"Satzstil: {sentence_style}")
+    if (vocab := data.get("vocabulary")) and isinstance(vocab, list) and vocab:
+        parts.append(f"Fachvokabular (unbedingt verwenden): {', '.join(vocab)}")
+    if (values := data.get("brand_values")) and isinstance(values, list) and values:
+        parts.append(f"Markenwerte: {', '.join(values)}")
+    if (themes := data.get("content_themes")) and isinstance(themes, list) and themes:
+        parts.append(f"Kernthemen: {', '.join(themes)}")
+    if guidelines := data.get("writing_guidelines"):
+        parts.append(f"Schreibrichtlinien: {guidelines}")
+
+    return "\n".join(parts) if parts else text
 
 
 async def _get_context_material(
@@ -195,7 +240,7 @@ async def generate_blog(request: BlogGenerateRequest, user_id: str) -> None:
         })
 
         # 2. Load company style profile if provided
-        style_profile: str | None = None
+        style_context: str | None = None
         if request.company_id:
             result = await db_query(
                 "companies",
@@ -205,21 +250,45 @@ async def generate_blog(request: BlogGenerateRequest, user_id: str) -> None:
                 company_data = result.data[0]
                 sp = company_data.get("style_profile")
                 if sp and isinstance(sp, dict):
-                    style_profile = sp.get("text")
+                    style_context = _build_style_context(sp)
+                    logger.info(
+                        "blog.style_profile_loaded",
+                        blog_id=blog_id,
+                        company_id=request.company_id,
+                        has_structured_data=bool(sp.get("data")),
+                    )
+                else:
+                    logger.info(
+                        "blog.style_profile_missing",
+                        blog_id=blog_id,
+                        company_id=request.company_id,
+                    )
+        else:
+            logger.info(
+                "blog.style_profile_skipped",
+                blog_id=blog_id,
+            )
 
-        # 3. Fetch context material
+        # 3. Build style-enriched system prompts (cached across pipeline steps)
+        styled_outline_prompt = build_style_system_prompt(OUTLINE_SYSTEM_PROMPT, style_context)
+        styled_section_prompt = build_style_system_prompt(SECTION_SYSTEM_PROMPT, style_context)
+        styled_intro_prompt = build_style_system_prompt(INTRO_SYSTEM_PROMPT, style_context)
+        styled_conclusion_prompt = build_style_system_prompt(
+            CONCLUSION_SYSTEM_PROMPT, style_context
+        )
+
+        # 4. Fetch context material
         context_material = await _get_context_material(
             request.content_source, request.title, request.source_url
         )
 
-        # 4. Generate outline
+        # 5. Generate outline
         await update_blog_status(blog_id, user_id, "running", "outline", 0.1)
 
         outline_prompt = build_outline_prompt(
             title=request.title,
             primary_keyword=request.primary_keyword,
             secondary_keywords=request.secondary_keywords,
-            style_profile=style_profile,
             context_material=context_material,
             target_word_count=request.target_word_count,
             language=request.language,
@@ -227,7 +296,7 @@ async def generate_blog(request: BlogGenerateRequest, user_id: str) -> None:
         )
 
         outline_text = await asyncio.to_thread(
-            _call_claude, OUTLINE_SYSTEM_PROMPT, outline_prompt, 2000
+            _call_claude, styled_outline_prompt, outline_prompt, 2000
         )
         parsed_outline = _extract_json(outline_text)
         sections_spec = parsed_outline.get("sections", [])
@@ -249,12 +318,11 @@ async def generate_blog(request: BlogGenerateRequest, user_id: str) -> None:
                     section=section,
                     primary_keyword=request.primary_keyword,
                     secondary_keywords=request.secondary_keywords,
-                    style_profile=style_profile,
                     language=request.language,
                     tone=request.tone,
                 )
                 section_text = await asyncio.to_thread(
-                    _call_claude, SECTION_SYSTEM_PROMPT, section_prompt, 1500
+                    _call_claude, styled_section_prompt, section_prompt, 1500
                 )
                 sections_content.append(section_text)
             except Exception as e:
@@ -287,7 +355,7 @@ async def generate_blog(request: BlogGenerateRequest, user_id: str) -> None:
             tone=request.tone,
         )
         intro_text = await asyncio.to_thread(
-            _call_claude, INTRO_SYSTEM_PROMPT, intro_prompt, 800
+            _call_claude, styled_intro_prompt, intro_prompt, 800
         )
 
         # 7. Generate conclusion
@@ -304,7 +372,7 @@ async def generate_blog(request: BlogGenerateRequest, user_id: str) -> None:
             tone=request.tone,
         )
         conclusion_text = await asyncio.to_thread(
-            _call_claude, CONCLUSION_SYSTEM_PROMPT, conclusion_prompt, 800
+            _call_claude, styled_conclusion_prompt, conclusion_prompt, 800
         )
 
         # 8. Assemble final content
