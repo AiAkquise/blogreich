@@ -209,6 +209,119 @@ def _assemble_markdown(
     return "\n".join(parts)
 
 
+async def _load_style_context(
+    company_id: str | None,
+    user_id: str,
+) -> str | None:
+    """Load company style context from Supabase.
+
+    Args:
+        company_id: Company ID to load style for, or None.
+        user_id: Authenticated user's ID.
+
+    Returns:
+        Formatted style context string, or None.
+    """
+    if not company_id:
+        logger.info("blog.style_profile_skipped")
+        return None
+
+    result = await db_query(
+        "companies",
+        {"id": company_id, "user_id": user_id},
+    )
+    if not result.data:
+        logger.info(
+            "blog.style_profile_missing",
+            company_id=company_id,
+        )
+        return None
+
+    sp = result.data[0].get("style_profile")
+    if sp and isinstance(sp, dict):
+        context = _build_style_context(sp)
+        logger.info(
+            "blog.style_profile_loaded",
+            company_id=company_id,
+            has_structured_data=bool(sp.get("data")),
+        )
+        return context
+
+    logger.info(
+        "blog.style_profile_missing",
+        company_id=company_id,
+    )
+    return None
+
+
+async def generate_outline(
+    title: str,
+    user_id: str,
+    company_id: str | None = None,
+    language: str = "de",
+    tone: str = "professional",
+    target_word_count: int = 3000,
+    primary_keyword: str | None = None,
+    secondary_keywords: list[str] | None = None,
+    content_source: str = "ai",
+    source_url: str | None = None,
+) -> dict[str, Any]:
+    """Generate a blog outline without starting full content generation.
+
+    Returns the outline as a dict with 'h1' and 'sections' keys.
+    Called synchronously (not as background task) because the user
+    waits for the outline to edit it (~5 seconds).
+
+    Args:
+        title: Blog title.
+        user_id: Authenticated user's ID.
+        company_id: Optional company for style context.
+        language: Output language.
+        tone: Writing tone.
+        target_word_count: Target word count for the blog.
+        primary_keyword: Primary SEO keyword.
+        secondary_keywords: Secondary SEO keywords.
+        content_source: Content source type (ai, realtime, url).
+        source_url: Source URL when content_source is 'url'.
+
+    Returns:
+        Dict with 'h1' and 'sections' keys.
+    """
+    logger.info("blog.outline_generation_started", title=title, user_id=user_id)
+
+    style_context = await _load_style_context(company_id, user_id)
+    styled_system = build_style_system_prompt(OUTLINE_SYSTEM_PROMPT, style_context)
+
+    context_material = await _get_context_material(content_source, title, source_url)
+
+    outline_prompt = build_outline_prompt(
+        title=title,
+        primary_keyword=primary_keyword,
+        secondary_keywords=secondary_keywords or [],
+        context_material=context_material,
+        target_word_count=target_word_count,
+        language=language,
+        tone=tone,
+    )
+
+    outline_text = await asyncio.to_thread(
+        _call_claude, styled_system, outline_prompt, 2000
+    )
+    parsed = _extract_json(outline_text)
+
+    sections = parsed.get("sections", [])
+    if not sections:
+        raise ValueError("Outline generation returned no sections")
+
+    logger.info(
+        "blog.outline_generation_completed",
+        title=title,
+        sections=len(sections),
+    )
+
+    return parsed
+
+
 async def generate_blog(request: BlogGenerateRequest, user_id: str) -> None:
     """Run blog generation pipeline as a background task.
 
@@ -239,72 +352,64 @@ async def generate_blog(request: BlogGenerateRequest, user_id: str) -> None:
             "progress": 0.1,
         })
 
-        # 2. Load company style profile if provided
-        style_context: str | None = None
-        if request.company_id:
-            result = await db_query(
-                "companies",
-                {"id": request.company_id, "user_id": user_id},
-            )
-            if result.data:
-                company_data = result.data[0]
-                sp = company_data.get("style_profile")
-                if sp and isinstance(sp, dict):
-                    style_context = _build_style_context(sp)
-                    logger.info(
-                        "blog.style_profile_loaded",
-                        blog_id=blog_id,
-                        company_id=request.company_id,
-                        has_structured_data=bool(sp.get("data")),
-                    )
-                else:
-                    logger.info(
-                        "blog.style_profile_missing",
-                        blog_id=blog_id,
-                        company_id=request.company_id,
-                    )
-        else:
-            logger.info(
-                "blog.style_profile_skipped",
-                blog_id=blog_id,
-            )
+        # 2. Load company style profile
+        style_context = await _load_style_context(request.company_id, user_id)
 
         # 3. Build style-enriched system prompts (cached across pipeline steps)
-        styled_outline_prompt = build_style_system_prompt(OUTLINE_SYSTEM_PROMPT, style_context)
-        styled_section_prompt = build_style_system_prompt(SECTION_SYSTEM_PROMPT, style_context)
-        styled_intro_prompt = build_style_system_prompt(INTRO_SYSTEM_PROMPT, style_context)
+        styled_section_prompt = build_style_system_prompt(
+            SECTION_SYSTEM_PROMPT, style_context
+        )
+        styled_intro_prompt = build_style_system_prompt(
+            INTRO_SYSTEM_PROMPT, style_context
+        )
         styled_conclusion_prompt = build_style_system_prompt(
             CONCLUSION_SYSTEM_PROMPT, style_context
         )
 
-        # 4. Fetch context material
-        context_material = await _get_context_material(
-            request.content_source, request.title, request.source_url
-        )
+        # 4. Resolve outline (user-provided or generate new)
+        if request.outline:
+            sections_spec = [s.model_dump() for s in request.outline]
+            logger.info(
+                "blog.outline_from_user",
+                blog_id=blog_id,
+                sections=len(sections_spec),
+            )
+            await update_blog_status(
+                blog_id, user_id, "running", "sections", 0.2
+            )
+        else:
+            await update_blog_status(
+                blog_id, user_id, "running", "outline", 0.1
+            )
+            styled_outline_prompt = build_style_system_prompt(
+                OUTLINE_SYSTEM_PROMPT, style_context
+            )
+            context_material = await _get_context_material(
+                request.content_source, request.title, request.source_url
+            )
+            outline_prompt = build_outline_prompt(
+                title=request.title,
+                primary_keyword=request.primary_keyword,
+                secondary_keywords=request.secondary_keywords,
+                context_material=context_material,
+                target_word_count=request.target_word_count,
+                language=request.language,
+                tone=request.tone,
+            )
+            outline_text = await asyncio.to_thread(
+                _call_claude, styled_outline_prompt, outline_prompt, 2000
+            )
+            parsed_outline = _extract_json(outline_text)
+            sections_spec = parsed_outline.get("sections", [])
 
-        # 5. Generate outline
-        await update_blog_status(blog_id, user_id, "running", "outline", 0.1)
+            if not sections_spec:
+                raise ValueError("Outline generation returned no sections")
 
-        outline_prompt = build_outline_prompt(
-            title=request.title,
-            primary_keyword=request.primary_keyword,
-            secondary_keywords=request.secondary_keywords,
-            context_material=context_material,
-            target_word_count=request.target_word_count,
-            language=request.language,
-            tone=request.tone,
-        )
-
-        outline_text = await asyncio.to_thread(
-            _call_claude, styled_outline_prompt, outline_prompt, 2000
-        )
-        parsed_outline = _extract_json(outline_text)
-        sections_spec = parsed_outline.get("sections", [])
-
-        if not sections_spec:
-            raise ValueError("Outline generation returned no sections")
-
-        logger.info("blog.outline_completed", blog_id=blog_id, sections=len(sections_spec))
+            logger.info(
+                "blog.outline_completed",
+                blog_id=blog_id,
+                sections=len(sections_spec),
+            )
 
         # 5. Generate sections
         await update_blog_status(blog_id, user_id, "running", "sections", 0.2)

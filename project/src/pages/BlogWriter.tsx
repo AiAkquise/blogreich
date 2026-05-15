@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { OutlineEditor, type OutlineSection } from '@/components/OutlineEditor';
 import type { Company } from '@/types';
 import {
   Sparkles,
@@ -21,14 +22,26 @@ import {
   FileText,
   X,
   AlertCircle,
+  ArrowLeft,
 } from 'lucide-react';
 
-const STEPS = [
+const STEPS_FULL = [
   'Gliederung wird erstellt...',
   'Abschnitte werden geschrieben...',
-  'Bilder werden generiert...',
+  'Einleitung & Fazit...',
   'Blog fertig!',
 ];
+
+const STEPS_FROM_OUTLINE = [
+  'Abschnitte werden geschrieben...',
+  'Einleitung & Fazit...',
+  'Blog fertig!',
+];
+
+interface OutlineResponse {
+  h1: string;
+  sections: OutlineSection[];
+}
 
 export default function BlogWriter() {
   const { user } = useAuth();
@@ -48,6 +61,10 @@ export default function BlogWriter() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+
+  const [outline, setOutline] = useState<OutlineSection[] | null>(null);
+  const [outlineLoading, setOutlineLoading] = useState(false);
+  const [optimizedTitle, setOptimizedTitle] = useState('');
 
   const [easyTitle, setEasyTitle] = useState('');
   const [easyCompanyId, setEasyCompanyId] = useState('');
@@ -78,13 +95,12 @@ export default function BlogWriter() {
     };
   }, []);
 
-  const stepMap: Record<string, number> = {
-    outline: 0,
-    sections: 1,
-    intro: 2,
-    conclusion: 2,
-    images: 3,
-    done: 3,
+  // Step mapping depends on whether outline was pre-provided
+  const stepMapFull: Record<string, number> = {
+    outline: 0, sections: 1, intro: 2, conclusion: 2, done: 3,
+  };
+  const stepMapFromOutline: Record<string, number> = {
+    sections: 0, intro: 1, conclusion: 1, done: 2,
   };
 
   interface BlogStatusResponse {
@@ -94,9 +110,15 @@ export default function BlogWriter() {
     error: string | null;
   }
 
-  const generateBlog = useCallback(async (blogTitle: string, cId: string, isEasy: boolean) => {
+  const generateBlog = useCallback(async (
+    blogTitle: string,
+    cId: string,
+    isEasy: boolean,
+    userOutline: OutlineSection[] | null = null,
+  ) => {
     const setStep = isEasy ? setEasyStep : setCurrentStep;
     const setGen = isEasy ? setEasyGenerating : setGenerating;
+    const activeStepMap = userOutline ? stepMapFromOutline : stepMapFull;
 
     setGen(true);
     setStep(0);
@@ -140,6 +162,7 @@ export default function BlogWriter() {
         secondary_keywords: isEasy ? [] : secondaryKeywords,
         content_source: isEasy ? 'ai' : contentSource,
         source_url: isEasy ? '' : sourceUrl,
+        ...(userOutline ? { outline: userOutline } : {}),
       });
 
       // 3. Poll for status every 2 seconds
@@ -147,7 +170,7 @@ export default function BlogWriter() {
         try {
           const status = await apiGet<BlogStatusResponse>(`/api/blogs/${blog.id}/status`);
           if (status.current_step) {
-            setStep(stepMap[status.current_step] ?? 0);
+            setStep(activeStepMap[status.current_step] ?? 0);
           }
 
           if (status.status === 'completed') {
@@ -173,9 +196,39 @@ export default function BlogWriter() {
     }
   }, [user, language, tone, wordCount, primaryKeyword, secondaryKeywords, contentSource, sourceUrl, navigate]);
 
-  const handleAdvancedGenerate = () => {
+  const handleGenerateOutline = async () => {
     if (!title.trim()) return;
-    generateBlog(title, companyId, false);
+    setOutlineLoading(true);
+    setGenerationError(null);
+    try {
+      const result = await apiPost<OutlineResponse>('/api/blogs/outline', {
+        title,
+        company_id: companyId || null,
+        language,
+        tone,
+        target_word_count: wordCount,
+        primary_keyword: primaryKeyword || null,
+        secondary_keywords: secondaryKeywords,
+        content_source: contentSource,
+        source_url: sourceUrl || null,
+      });
+      setOutline(result.sections);
+      setOptimizedTitle(result.h1);
+    } catch (err) {
+      setGenerationError(err instanceof Error ? err.message : 'Gliederung konnte nicht erstellt werden');
+    } finally {
+      setOutlineLoading(false);
+    }
+  };
+
+  const handleGenerateFromOutline = () => {
+    if (!outline) return;
+    generateBlog(optimizedTitle || title, companyId, false, outline);
+  };
+
+  const handleResetOutline = () => {
+    setOutline(null);
+    setOptimizedTitle('');
   };
 
   const handleEasyGenerate = () => {
@@ -195,13 +248,13 @@ export default function BlogWriter() {
     setSecondaryKeywords(secondaryKeywords.filter((k) => k !== kw));
   };
 
-  const renderProgress = (steps: number, isGenerating: boolean) => {
+  const renderProgress = (steps: number, isGenerating: boolean, stepLabels: string[]) => {
     if (!isGenerating) return null;
     return (
       <Card className="mt-6 border-primary-200 dark:border-primary-800">
         <CardContent>
           <div className="space-y-4">
-            {STEPS.map((step, i) => (
+            {stepLabels.map((step, i) => (
               <div key={i} className="flex items-center gap-3">
                 {i < steps ? (
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
@@ -395,23 +448,73 @@ export default function BlogWriter() {
               )}
             </Card>
 
-            <Button
-              onClick={handleAdvancedGenerate}
-              disabled={!title.trim() || generating}
-              className="w-full"
-              size="lg"
-            >
-              {generating ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <>
-                  <Sparkles className="h-5 w-5" />
-                  Blog generieren
-                </>
-              )}
-            </Button>
+            {outline ? (
+              <>
+                <Card>
+                  <CardContent>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="font-medium text-surface-900 dark:text-surface-100">
+                          Gliederung bearbeiten
+                        </h3>
+                        <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">
+                          Verschiebe, bearbeite oder loesche Abschnitte vor der Generierung
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={handleResetOutline} disabled={generating}>
+                        <ArrowLeft className="h-4 w-4" />
+                        Zurueck
+                      </Button>
+                    </div>
+                    {optimizedTitle && optimizedTitle !== title && (
+                      <div className="mb-4 rounded-lg bg-primary-50 dark:bg-primary-900/20 p-3">
+                        <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
+                          Optimierter Titel:{' '}
+                        </span>
+                        <span className="text-sm text-surface-900 dark:text-surface-100">
+                          {optimizedTitle}
+                        </span>
+                      </div>
+                    )}
+                    <OutlineEditor sections={outline} onChange={setOutline} />
+                  </CardContent>
+                </Card>
 
-            {renderProgress(currentStep, generating)}
+                <Button
+                  onClick={handleGenerateFromOutline}
+                  disabled={generating}
+                  className="w-full"
+                  size="lg"
+                >
+                  {generating ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5" />
+                      Blog generieren
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={handleGenerateOutline}
+                disabled={!title.trim() || outlineLoading}
+                className="w-full"
+                size="lg"
+              >
+                {outlineLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5" />
+                    Gliederung erstellen
+                  </>
+                )}
+              </Button>
+            )}
+
+            {renderProgress(currentStep, generating, outline ? STEPS_FROM_OUTLINE : STEPS_FULL)}
             {generationError && (
               <Card className="mt-4 border-red-200 dark:border-red-800">
                 <CardContent>
@@ -469,7 +572,7 @@ export default function BlogWriter() {
               )}
             </Button>
 
-            {renderProgress(easyStep, easyGenerating)}
+            {renderProgress(easyStep, easyGenerating, STEPS_FULL)}
             {generationError && easyGenerating === false && (
               <Card className="mt-4 border-red-200 dark:border-red-800">
                 <CardContent>

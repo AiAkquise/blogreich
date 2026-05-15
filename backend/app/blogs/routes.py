@@ -4,14 +4,56 @@ import asyncio
 
 from fastapi import APIRouter, Depends
 
-from app.blogs.schemas import BlogGenerateRequest, BlogGenerateResponse, BlogStatusResponse
-from app.blogs.service import generate_blog
+from app.blogs.schemas import (
+    BlogGenerateRequest,
+    BlogGenerateResponse,
+    BlogStatusResponse,
+    OutlineRequest,
+    OutlineResponse,
+    OutlineSection,
+)
+from app.blogs.service import generate_blog, generate_outline
 from app.core.auth import get_current_user_id
 from app.core.logging import get_logger
 from app.core.supabase_client import db_query
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+
+@router.post("/outline", response_model=OutlineResponse)
+async def generate_blog_outline(
+    request: OutlineRequest,
+    user_id: str = Depends(get_current_user_id),
+) -> OutlineResponse:
+    """Generate a blog outline for review and editing.
+
+    Unlike /generate, this returns the outline directly (no background task).
+    The user can then edit the outline and pass it to /generate.
+    """
+    logger.info(
+        "blog.outline_request_received",
+        user_id=user_id,
+        title=request.title,
+    )
+
+    result = await generate_outline(
+        title=request.title,
+        user_id=user_id,
+        company_id=request.company_id,
+        language=request.language,
+        tone=request.tone,
+        target_word_count=request.target_word_count,
+        primary_keyword=request.primary_keyword,
+        secondary_keywords=request.secondary_keywords,
+        content_source=request.content_source,
+        source_url=request.source_url,
+    )
+
+    return OutlineResponse(
+        h1=result.get("h1", request.title),
+        sections=[OutlineSection(**s) for s in result.get("sections", [])],
+    )
 
 
 @router.post("/generate", response_model=BlogGenerateResponse)
@@ -29,6 +71,7 @@ async def start_blog_generation(
         blog_id=request.blog_id,
         user_id=user_id,
         title=request.title,
+        has_outline=request.outline is not None,
     )
 
     asyncio.create_task(generate_blog(request, user_id))
